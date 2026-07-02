@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TodoMaster</title>
+<style>
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-page:        #fafaf7;
+    --bg-sidebar:     #f3f1ec;
+    --bg-surface:     #ffffff;
+    --bg-hover:       #f4f2ed;
+    --bg-active:      #eeebe4;
+    --border:         #e6e4df;
+    --border-light:   #eeede9;
+    --text-primary:   #1c1c1c;
+    --text-secondary: #6e6d6a;
+    --text-tertiary:  #9e9d99;
+    --text-disabled:  #c5c3be;
+    --accent:         #d45d3c;
+    --accent-hover:   #c44a2a;
+    --accent-subtle:  #fdf0eb;
+    --green:          #5d8a76;
+    --green-subtle:   #edf5f1;
+    --yellow:         #c9a23b;
+    --yellow-subtle:  #faf6ed;
+    --blue-gray:      #7d919e;
+    --sidebar-width:  260px;
+    --radius-sm:      4px;
+    --radius-md:      6px;
+    --transition:     120ms ease;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg-page);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ===== App Shell ===== */
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .sidebar-brand {
+    padding: 20px 20px 16px;
+    font-size: 15px;
+    font-weight: 650;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 0 12px;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    margin-bottom: 20px;
+  }
+
+  .sidebar-label {
+    font-size: 11px;
+    font-weight: 550;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition);
+    font-size: 13.5px;
+    letter-spacing: 0.005em;
+  }
+
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .nav-item.active {
+    background: var(--bg-active);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .nav-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-weight: 400;
+    min-width: 20px;
+    text-align: center;
+  }
+
+  .nav-item.active .nav-count { color: var(--text-secondary); }
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .nav-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .sidebar-footer .hint {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    padding: 6px 8px;
+    line-height: 1.5;
+  }
+
+  .sidebar-footer .hint kbd {
+    display: inline-block;
+    font-family: inherit;
+    font-size: 10.5px;
+    background: var(--bg-active);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+  }
+
+  /* ===== Main Area ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-page);
+  }
+
+  .main-header {
+    padding: 24px 32px 0;
+    flex-shrink: 0;
+  }
+
+  .main-header h1 {
+    font-size: 22px;
+    font-weight: 650;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .main-header .date {
+    display: block;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+  }
+
+  /* ===== Add Task Input ===== */
+  .add-task-area {
+    padding: 20px 32px 0;
+    flex-shrink: 0;
+  }
+
+  .add-task-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+    transition: border-color var(--transition);
+  }
+
+  .add-task-row:focus-within { border-bottom-color: var(--accent); }
+
+  .add-task-row .plus {
+    color: var(--text-tertiary);
+    font-size: 16px;
+    font-weight: 350;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    transition: color var(--transition);
+  }
+
+  .add-task-row:focus-within .plus { color: var(--accent); }
+
+  .add-task-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: transparent;
+    padding: 6px 0;
+    letter-spacing: 0.005em;
+  }
+
+  .add-task-input::placeholder { color: var(--text-tertiary); }
+
+  .add-task-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+  }
+
+  .btn-icon:hover { background: var(--bg-hover); color: var(--text-secondary); }
+
+  .btn-icon svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* ===== Task List ===== */
+  .task-list-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 32px 40px;
+  }
+
+  .task-group {
+    margin-bottom: 24px;
+  }
+
+  .task-group-header {
+    font-size: 12px;
+    font-weight: 550;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+
+  /* ===== Task Item ===== */
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: var(--radius-md);
+    cursor: default;
+    transition: background var(--transition);
+    border-bottom: 1px solid transparent;
+  }
+
+  .task-item:hover { background: var(--bg-hover); }
+
+  .task-item:not(:last-child) {
+    border-bottom-color: var(--border-light);
+  }
+
+  /* Checkbox */
+  .task-check {
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    margin-top: 2px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+  }
+
+  .task-check:hover { border-color: var(--green); }
+
+  .task-check.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+
+  .task-check.done::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg) translateY(-1px);
+  }
+
+  /* Task Body */
+  .task-body { flex: 1; min-width: 0; }
+
+  .task-title {
+    font-size: 14px;
+    color: var(--text-primary);
+    letter-spacing: 0.005em;
+    line-height: 1.4;
+    transition: color var(--transition);
+  }
+
+  .task-item.completed .task-title {
+    color: var(--text-disabled);
+    text-decoration: line-through;
+    text-decoration-color: var(--border);
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+  }
+
+  .task-meta-item {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .task-meta-item svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+
+  /* Priority Badge */
+  .priority {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 550;
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .priority.high { color: var(--accent); background: var(--accent-subtle); }
+  .priority.medium { color: var(--yellow); background: var(--yellow-subtle); }
+  .priority.low { color: var(--blue-gray); background: #f2f5f7; }
+
+  /* Tag */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: var(--bg-hover);
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.01em;
+  }
+
+  /* Task Actions */
+  .task-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .task-item:hover .task-actions { opacity: 1; }
+
+  .task-actions .btn-icon { width: 26px; height: 26px; }
+
+  .task-actions .btn-icon svg { width: 14px; height: 14px; }
+
+  .task-actions .btn-icon.danger:hover { color: var(--accent); background: var(--accent-subtle); }
+
+  /* ===== Empty State ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+  }
+
+  .empty-state .sub {
+    font-size: 12.5px;
+    color: var(--text-disabled);
+  }
+
+  /* ===== Detail Panel ===== */
+  .detail-panel {
+    width: 320px;
+    min-width: 320px;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .detail-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-disabled);
+    font-size: 13px;
+  }
+
+  .detail-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 550;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    margin-bottom: 3px;
+  }
+
+  .detail-field .value {
+    font-size: 13.5px;
+    color: var(--text-primary);
+    padding: 4px 0;
+  }
+
+  .detail-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .detail-close:hover { background: var(--bg-hover); color: var(--text-secondary); }
+
+  /* ===== Scrollbar ===== */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-disabled); }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 900px) {
+    .detail-panel { display: none; }
+  }
+
+  @media (max-width: 640px) {
+    .sidebar { display: none; }
+    .main-header { padding: 20px 16px 0; }
+    .add-task-area { padding: 16px 16px 0; }
+    .task-list-wrap { padding: 12px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">TodoMaster</div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">
+        <div class="sidebar-label">视图</div>
+        <a class="nav-item active" data-view="today">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+          </span>
+          今天
+          <span class="nav-count">3</span>
+        </a>
+        <a class="nav-item" data-view="upcoming">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </span>
+          计划
+          <span class="nav-count">5</span>
+        </a>
+        <a class="nav-item" data-view="all">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </span>
+          全部
+          <span class="nav-count">8</span>
+        </a>
+        <a class="nav-item" data-view="done">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>
+          </span>
+          已完成
+          <span class="nav-count">2</span>
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">项目</div>
+        <a class="nav-item" data-view="work">
+          <span class="nav-icon" style="color:var(--accent)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg></span>
+          工作
+          <span class="nav-count">5</span>
+        </a>
+        <a class="nav-item" data-view="personal">
+          <span class="nav-icon" style="color:var(--green)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg></span>
+          个人
+          <span class="nav-count">2</span>
+        </a>
+        <a class="nav-item" data-view="learn">
+          <span class="nav-icon" style="color:var(--yellow)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg></span>
+          学习
+          <span class="nav-count">1</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="hint">
+        输入自然语言，AI 自动解析为日程<br>
+        <kbd>Ctrl</kbd> + <kbd>N</kbd> 快速添加
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Main Content ===== -->
+  <main class="main" id="mainContent">
+    <div class="main-header">
+      <h1 id="viewTitle">今天</h1>
+      <span class="date" id="viewDate">7月2日 星期四</span>
+    </div>
+
+    <div class="add-task-area">
+      <div class="add-task-row">
+        <span class="plus">+</span>
+        <input
+          class="add-task-input"
+          type="text"
+          id="addTaskInput"
+          placeholder="添加任务，或输入自然语言描述让 AI 解析…"
+          autocomplete="off"
+        >
+        <div class="add-task-actions">
+          <button class="btn-icon" title="设置截止日期" id="btnDate">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </button>
+          <button class="btn-icon" title="设置优先级" id="btnPriority">
+            <svg viewBox="0 0 24 24"><path d="M6 12l4-8 4 8H6zM14 16l-4 8-4-8h8z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-list-wrap" id="taskList">
+      <!-- Rendered by JS -->
+    </div>
+  </main>
+
+  <!-- ===== Detail Panel ===== -->
+  <aside class="detail-panel" id="detailPanel">
+    <div class="detail-empty" id="detailEmpty">选择任务查看详情</div>
+    <div id="detailContent" style="display:none; position:relative;">
+      <button class="detail-close" id="detailClose" title="关闭">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="detail-field">
+        <label>任务名称</label>
+        <div class="value" id="detailTitle"></div>
+      </div>
+      <div class="detail-field">
+        <label>截止时间</label>
+        <div class="value" id="detailDue"></div>
+      </div>
+      <div class="detail-field">
+        <label>优先级</label>
+        <div class="value" id="detailPriority"></div>
+      </div>
+      <div class="detail-field">
+        <label>标签</label>
+        <div class="value" id="detailTags"></div>
+      </div>
+      <div class="detail-field">
+        <label>备注</label>
+        <div class="value" style="color:var(--text-tertiary)" id="detailNote"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ===== Task Data =====
+const today = new Date();
+const fmt = (d) => {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+const tasks = [
+  {
+    id: 1,
+    title: '给导师发邮件汇报本周进度',
+    due: '2026-07-02 15:00',
+    priority: 'high',
+    tags: ['工作'],
+    project: 'work',
+    done: false,
+  },
+  {
+    id: 2,
+    title: '项目进度讨论会议',
+    due: '2026-07-02 09:00',
+    priority: 'high',
+    tags: ['工作', '会议'],
+    project: 'work',
+    done: true,
+  },
+  {
+    id: 3,
+    title: '完成季度报告并提交审核',
+    due: '2026-07-03 23:59',
+    priority: 'high',
+    tags: ['工作'],
+    project: 'work',
+    done: false,
+  },
+  {
+    id: 4,
+    title: '预约财务对账时间',
+    due: '2026-07-04 12:00',
+    priority: 'medium',
+    tags: ['工作'],
+    project: 'work',
+    done: false,
+  },
+  {
+    id: 5,
+    title: '查阅 NLP 相关文献并做笔记',
+    due: '2026-07-05 18:00',
+    priority: 'low',
+    tags: ['学习'],
+    project: 'learn',
+    done: false,
+  },
+  {
+    id: 6,
+    title: '更新项目 README 和技术文档',
+    due: '2026-07-03 17:00',
+    priority: 'medium',
+    tags: ['工作'],
+    project: 'work',
+    done: false,
+  },
+  {
+    id: 7,
+    title: '跑步 5 公里',
+    due: '2026-07-02 07:00',
+    priority: 'medium',
+    tags: ['个人'],
+    project: 'personal',
+    done: true,
+  },
+  {
+    id: 8,
+    title: '整理桌面和下载文件夹',
+    due: '2026-07-06 12:00',
+    priority: 'low',
+    tags: ['个人'],
+    project: 'personal',
+    done: false,
+  },
+];
+
+let currentView = 'today';
+
+// ===== Helpers =====
+function relDate(dueStr) {
+  const due = new Date(dueStr.replace(' ', 'T'));
+  const now = new Date();
+  const diffMs = due - now;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const time = dueStr.split(' ')[1]?.slice(0, 5) || '';
+
+  if (diffDays < 0) return `已过期 ${time}`;
+  if (diffDays === 0) return `今天 ${time}`;
+  if (diffDays === 1) return `明天 ${time}`;
+  if (diffDays <= 5) return `${diffDays}天后 ${time}`;
+  return dueStr.slice(0, 10);
+}
+
+function filterTasks(view) {
+  const todayStr = fmt(today);
+  const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
+
+  switch (view) {
+    case 'today':
+      return tasks.filter(t => !t.done && t.due.startsWith(todayStr));
+    case 'upcoming':
+      return tasks.filter(t => !t.done && t.due > todayStr + ' 23:59')
+        .sort((a, b) => a.due.localeCompare(b.due));
+    case 'all':
+      return [...tasks.filter(t => !t.done), ...tasks.filter(t => t.done)];
+    case 'done':
+      return tasks.filter(t => t.done);
+    case 'work':
+    case 'personal':
+    case 'learn':
+      return tasks.filter(t => t.project === view && !t.done);
+    default:
+      return tasks;
+  }
+}
+
+function groupByDate(taskList) {
+  const groups = {};
+  for (const t of taskList) {
+    const key = t.done ? 'completed' : (t.due?.slice(0, 10) || 'no-date');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  }
+  return groups;
+}
+
+function groupLabel(key) {
+  if (key === 'completed') return '已完成';
+  const d = new Date(key + 'T00:00:00');
+  const todayStr = fmt(today);
+  const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
+  if (key === todayStr) return '今天';
+  if (key === tomorrowStr) return '明天';
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  return `${months[d.getMonth()]}${d.getDate()}日 ${days[d.getDay()]}`;
+}
+
+// ===== Render =====
+function renderTask(t) {
+  const doneClass = t.done ? 'completed' : '';
+  const checkClass = t.done ? 'done' : '';
+
+  return `
+    <div class="task-item ${doneClass}" data-id="${t.id}" data-project="${t.project}">
+      <div class="task-check ${checkClass}" data-toggle="${t.id}"></div>
+      <div class="task-body">
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="task-meta">
+          ${t.due ? `<span class="task-meta-item">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>
+            ${relDate(t.due)}
+          </span>` : ''}
+          ${t.priority ? `<span class="priority ${t.priority}">${t.priority === 'high' ? '高' : t.priority === 'medium' ? '中' : '低'}</span>` : ''}
+          ${t.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="btn-icon danger" data-delete="${t.id}" title="删除">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderList() {
+  const container = document.getElementById('taskList');
+  const filtered = filterTasks(currentView);
+  const groups = groupByDate(filtered);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>没有任务</p>
+        <span class="sub">在上方输入框添加新任务</span>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    if (a === 'completed') return 1;
+    if (b === 'completed') return -1;
+    return a.localeCompare(b);
+  });
+
+  for (const key of sortedKeys) {
+    if (key !== 'no-date') {
+      html += `<div class="task-group"><div class="task-group-header">${groupLabel(key)}</div>`;
+    }
+    for (const t of groups[key]) {
+      html += renderTask(t);
+    }
+    if (key !== 'no-date') html += '</div>';
+  }
+
+  container.innerHTML = html;
+  bindTaskEvents();
+  updateCounts();
+}
+
+function bindTaskEvents() {
+  document.querySelectorAll('.task-check[data-toggle]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(el.dataset.toggle);
+      const t = tasks.find(x => x.id === id);
+      if (t) { t.done = !t.done; renderList(); }
+    });
+  });
+
+  document.querySelectorAll('.btn-icon[data-delete]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(el.dataset.delete);
+      const idx = tasks.findIndex(x => x.id === id);
+      if (idx !== -1) { tasks.splice(idx, 1); renderList(); closeDetail(); }
+    });
+  });
+
+  document.querySelectorAll('.task-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = parseInt(el.dataset.id);
+      showDetail(id);
+    });
+  });
+}
+
+// ===== Detail Panel =====
+function showDetail(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('detailEmpty').style.display = 'none';
+  document.getElementById('detailContent').style.display = 'block';
+  document.getElementById('detailTitle').textContent = t.title;
+  document.getElementById('detailDue').textContent = t.due || '未设置';
+  document.getElementById('detailPriority').textContent =
+    t.priority === 'high' ? '高' : t.priority === 'medium' ? '中' : t.priority === 'low' ? '低' : '未设置';
+  document.getElementById('detailTags').textContent = t.tags.length ? t.tags.join('、') : '无';
+  document.getElementById('detailNote').textContent = '暂无备注';
+}
+
+function closeDetail() {
+  document.getElementById('detailEmpty').style.display = 'flex';
+  document.getElementById('detailContent').style.display = 'none';
+}
+
+document.getElementById('detailClose').addEventListener('click', closeDetail);
+
+// ===== Sidebar Navigation =====
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const view = el.dataset.view;
+    if (!view) return;
+    currentView = view;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    updateHeader(view);
+    renderList();
+    closeDetail();
+  });
+});
+
+function updateHeader(view) {
+  const title = document.getElementById('viewTitle');
+  const date = document.getElementById('viewDate');
+  const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  const ds = `${months[today.getMonth()]}${today.getDate()}日 ${days[today.getDay()]}`;
+
+  const titles = {
+    today: '今天', upcoming: '计划', all: '全部任务', done: '已完成',
+    work: '工作', personal: '个人', learn: '学习',
+  };
+  title.textContent = titles[view] || '任务';
+  date.textContent = ds;
+}
+
+function updateCounts() {
+  document.querySelectorAll('.nav-item[data-view]').forEach(el => {
+    const view = el.dataset.view;
+    const count = filterTasks(view).length;
+    const countEl = el.querySelector('.nav-count');
+    if (countEl) countEl.textContent = count;
+  });
+}
+
+// ===== Add Task =====
+const addInput = document.getElementById('addTaskInput');
+addInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && addInput.value.trim()) {
+    const title = addInput.value.trim();
+    tasks.unshift({
+      id: Date.now(),
+      title,
+      due: fmt(today) + ' 23:59',
+      priority: 'medium',
+      tags: [],
+      project: 'personal',
+      done: false,
+    });
+    addInput.value = '';
+    renderList();
+  }
+});
+
+// ===== Keyboard Shortcuts =====
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault();
+    addInput.focus();
+  }
+  if (e.key === 'Escape') {
+    closeDetail();
+    addInput.blur();
+  }
+});
+
+// ===== Init =====
+renderList();
+</script>
+
+</body>
+</html>

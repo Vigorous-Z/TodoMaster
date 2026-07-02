@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "f:\\TodoMaster\\logs\\.5d108894a8ca04d71d32b2fcbbd3180f63e17b48-audit.json",
+    "files": [
+        {
+            "date": 1783004394801,
+            "name": "f:\\TodoMaster\\logs\\mcp-puppeteer-2026-07-02.log",
+            "hash": "e17e0ab2055fdc80c7c56ba1d188ed6d1b88b2617d792f7c497cfa961699ca04"
+        }
+    ],
+    "hashType": "sha256"
+}
