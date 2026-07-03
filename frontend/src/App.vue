@@ -38,8 +38,16 @@ onMounted(() => {
     }
   })
 
-  // 加载数据
-  store.loadTasks()
+  // 加载数据——PyWebView API 异步注入，需等待就绪
+  if (window.pywebview?.api?.api_get_tasks) {
+    store.loadTasks()
+  } else {
+    window.addEventListener('pywebviewready', () => store.loadTasks())
+    // 500ms 兜底：纯浏览器无 PyWebView 时用 localStorage
+    setTimeout(() => {
+      if (!window.pywebview?.api) store.loadTasks()
+    }, 500)
+  }
 })
 
 const store = useTaskStore()

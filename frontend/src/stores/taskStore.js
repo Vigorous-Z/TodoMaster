@@ -1,24 +1,104 @@
 import { defineStore } from 'pinia'
 
-// 工具函数：格式化日期
+// ========== 工具函数 ==========
 function fmt(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}-${m}-${day}`
 }
 
-// 初始数据（完全迁移自你的 HTML）
-const defaultTasks = [
-  { id: 1, title: '给导师发邮件汇报本周进度', due: '2026-07-02 15:00', priority: 'high', tags: ['工作'], project: 'work', done: false },
-  { id: 2, title: '项目进度讨论会议', due: '2026-07-02 09:00', priority: 'high', tags: ['工作', '会议'], project: 'work', done: true },
-  { id: 3, title: '完成季度报告并提交审核', due: '2026-07-03 23:59', priority: 'high', tags: ['工作'], project: 'work', done: false },
-  { id: 4, title: '预约财务对账时间', due: '2026-07-04 12:00', priority: 'medium', tags: ['工作'], project: 'work', done: false },
-  { id: 5, title: '查阅 NLP 相关文献并做笔记', due: '2026-07-05 18:00', priority: 'low', tags: ['学习'], project: 'learn', done: false },
-  { id: 6, title: '更新项目 README 和技术文档', due: '2026-07-03 17:00', priority: 'medium', tags: ['工作'], project: 'work', done: false },
-  { id: 7, title: '跑步 5 公里', due: '2026-07-02 07:00', priority: 'medium', tags: ['个人'], project: 'personal', done: true },
-  { id: 8, title: '整理桌面和下载文件夹', due: '2026-07-06 12:00', priority: 'low', tags: ['个人'], project: 'personal', done: false },
-]
+// ========== API 适配器 ==========
+const STORAGE_KEY = 'todomaster_tasks'
 
+/** localStorage 模式（Vite 开发环境无 PyWebView 时使用） */
+const localAdapter = {
+  _read() {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      try { return JSON.parse(saved) } catch { return [] }
+    }
+    return []
+  },
+  _write(tasks) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
+  },
+  getTasks() {
+    return Promise.resolve(this._read())
+  },
+  addTask(title, due, priority, tags, project, description) {
+    const tasks = this._read()
+    const newTask = {
+      id: String(Date.now()),
+      title,
+      due: due || fmt(new Date()) + ' 23:59',
+      priority: priority || 'medium',
+      tags: tags || [],
+      project: project || 'personal',
+      description: description || '',
+      done: false,
+    }
+    tasks.unshift(newTask)
+    this._write(tasks)
+    return Promise.resolve(newTask)
+  },
+  toggleTask(id) {
+    const tasks = this._read()
+    const task = tasks.find(t => t.id === id)
+    if (task) {
+      task.done = !task.done
+      this._write(tasks)
+    }
+    return Promise.resolve()
+  },
+  deleteTask(id) {
+    const tasks = this._read()
+    const idx = tasks.findIndex(t => t.id === id)
+    if (idx !== -1) {
+      tasks.splice(idx, 1)
+      this._write(tasks)
+    }
+    return Promise.resolve()
+  },
+}
+
+/** PyWebView 模式——js_api 同步调用 */
+const bridgeAdapter = {
+  getTasks() {
+    const raw = window.pywebview.api.api_get_tasks()
+    return raw || []
+  },
+  addTask(title, due, priority, tags, project, description) {
+    return window.pywebview.api.api_add_task({
+      title,
+      due_date: due || fmt(new Date()) + ' 23:59',
+      priority: priority || 'medium',
+      tags: tags || [],
+      project: project || 'personal',
+      description: description || '',
+    })
+  },
+  toggleTask(id) {
+    return window.pywebview.api.api_toggle_task(id)
+  },
+  deleteTask(id) {
+    window.pywebview.api.api_delete_task(id)
+  },
+}
+
+/** 就绪检测：PyWebView 注入 api 是异步的，轮询等待 */
+function isBridgeReady() {
+  return typeof window !== 'undefined'
+    && window.pywebview
+    && window.pywebview.api
+    && typeof window.pywebview.api.api_get_tasks === 'function'
+}
+
+function getAdapter() {
+  if (isBridgeReady()) return bridgeAdapter
+  return localAdapter
+}
+
+// ========== Pinia Store ==========
 export const useTaskStore = defineStore('task', {
   state: () => ({
     tasks: [],
@@ -27,16 +107,14 @@ export const useTaskStore = defineStore('task', {
   }),
 
   getters: {
-    // 根据当前视图筛选任务
     filteredTasks(state) {
       const todayStr = fmt(new Date())
       const view = state.currentView
-
       switch (view) {
         case 'today':
-          return state.tasks.filter(t => !t.done && t.due.startsWith(todayStr))
+          return state.tasks.filter(t => !t.done && t.due && t.due.startsWith(todayStr))
         case 'upcoming':
-          return state.tasks.filter(t => !t.done && t.due > todayStr + ' 23:59')
+          return state.tasks.filter(t => !t.done && t.due && t.due > todayStr + ' 23:59')
             .sort((a, b) => a.due.localeCompare(b.due))
         case 'all':
           return [...state.tasks.filter(t => !t.done), ...state.tasks.filter(t => t.done)]
@@ -50,112 +128,78 @@ export const useTaskStore = defineStore('task', {
           return state.tasks
       }
     },
-
-    // 选中的任务详情
     selectedTask(state) {
       return state.tasks.find(t => t.id === state.selectedTaskId) || null
     },
-
-    // 各视图的任务数量（用于侧边栏角标）
-    // 在 getters 中替换 counts
-	counts(state) {
-	const views = ['today', 'upcoming', 'all', 'done', 'work', 'personal', 'learn']
-	const result = {}
-	const todayStr = fmt(new Date())
-
-	for (const v of views) {
-		let filtered = []
-		switch (v) {
-		case 'today':
-			filtered = state.tasks.filter(t => !t.done && t.due && t.due.startsWith(todayStr))
-			break
-		case 'upcoming':
-			filtered = state.tasks.filter(t => !t.done && t.due && t.due > todayStr + ' 23:59')
-			.sort((a, b) => a.due.localeCompare(b.due))
-			break
-		case 'all':
-			filtered = [...state.tasks.filter(t => !t.done), ...state.tasks.filter(t => t.done)]
-			break
-		case 'done':
-			filtered = state.tasks.filter(t => t.done)
-			break
-		case 'work':
-		case 'personal':
-		case 'learn':
-			filtered = state.tasks.filter(t => t.project === v && !t.done)
-			break
-		default:
-			filtered = []
-		}
-		result[v] = filtered.length
-	}
-	return result
-	}
+    counts(state) {
+      const views = ['today', 'upcoming', 'all', 'done', 'work', 'personal', 'learn']
+      const result = {}
+      const todayStr = fmt(new Date())
+      for (const v of views) {
+        let filtered = []
+        switch (v) {
+          case 'today':
+            filtered = state.tasks.filter(t => !t.done && t.due && t.due.startsWith(todayStr))
+            break
+          case 'upcoming':
+            filtered = state.tasks.filter(t => !t.done && t.due && t.due > todayStr + ' 23:59')
+            break
+          case 'all':
+            filtered = [...state.tasks.filter(t => !t.done), ...state.tasks.filter(t => t.done)]
+            break
+          case 'done':
+            filtered = state.tasks.filter(t => t.done)
+            break
+          case 'work':
+          case 'personal':
+          case 'learn':
+            filtered = state.tasks.filter(t => t.project === v && !t.done)
+            break
+        }
+        result[v] = filtered.length
+      }
+      return result
+    },
   },
 
   actions: {
-    // 初始化/加载数据（可从 localStorage 恢复）
-    loadTasks() {
-      const saved = localStorage.getItem('todomaster_tasks')
-      if (saved) {
-        try { this.tasks = JSON.parse(saved) } catch { this.tasks = defaultTasks }
-      } else {
-        this.tasks = defaultTasks
+    async loadTasks() {
+      let adapter = getAdapter()
+      // 若非 bridgeReady 且 localStorage 为空，延迟重试等待 pywebview 就绪
+      let data = await adapter.getTasks()
+      if (!isBridgeReady() && data.length === 0) {
+        await new Promise(r => setTimeout(r, 300))
+        if (isBridgeReady()) {
+          adapter = bridgeAdapter
+          data = adapter.getTasks()
+        }
       }
+      this.tasks = data
     },
-
-    // 保存到 localStorage
-    saveTasks() {
-      localStorage.setItem('todomaster_tasks', JSON.stringify(this.tasks))
+    async addTask(title, due, priority, tags, project) {
+      const adapter = getAdapter()
+      await adapter.addTask(title, due, priority, tags, project)
+      await this.loadTasks()
     },
-
-    // 添加任务
-    addTask(title, due, priority, tags, project) {
-      const newTask = {
-        id: Date.now(),
-        title,
-        due: due || fmt(new Date()) + ' 23:59',
-        priority: priority || 'medium',
-        tags: tags || [],
-        project: project || 'personal',
-        done: false,
-      }
-      this.tasks.unshift(newTask)
-      this.saveTasks()
+    async toggleTask(id) {
+      const adapter = getAdapter()
+      await adapter.toggleTask(id)
+      await this.loadTasks()
     },
-
-    // 切换完成状态
-    toggleTask(id) {
-      const task = this.tasks.find(t => t.id === id)
-      if (task) {
-        task.done = !task.done
-        this.saveTasks()
-      }
+    async deleteTask(id) {
+      const adapter = getAdapter()
+      await adapter.deleteTask(id)
+      if (this.selectedTaskId === id) this.selectedTaskId = null
+      await this.loadTasks()
     },
-
-    // 删除任务
-    deleteTask(id) {
-      const idx = this.tasks.findIndex(t => t.id === id)
-      if (idx !== -1) {
-        this.tasks.splice(idx, 1)
-        if (this.selectedTaskId === id) this.selectedTaskId = null
-        this.saveTasks()
-      }
-    },
-
-    // 切换视图
     setView(view) {
       this.currentView = view
     },
-
-    // 选择任务（详情面板）
     selectTask(id) {
       this.selectedTaskId = id
     },
-
-    // 关闭详情
     closeDetail() {
       this.selectedTaskId = null
-    }
-  }
+    },
+  },
 })
