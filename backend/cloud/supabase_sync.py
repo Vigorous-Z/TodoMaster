@@ -7,8 +7,8 @@ from backend.core.database import get_connection
 from backend.models.task import Task
 from backend.repositories.local_task_repo import LocalTaskRepo
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://galiyyrwmrhgloolbnjy.supabase.co")
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhbGl5eXJ3bXJoZ2xvb2xibmp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzI0MzIwNCwiZXhwIjoyMDk4ODE5MjA0fQ.fAOuW0gHvB8NkIBWKOc1_p8lzdFeYt6UK_dvneSjGZg")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 
 _repo = LocalTaskRepo()
 
@@ -26,7 +26,7 @@ def _is_online() -> bool:
 
 def _get_client():
     from supabase import create_client
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
 
 # ========== Tasks ==========

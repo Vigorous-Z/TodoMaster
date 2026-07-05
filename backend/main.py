@@ -9,6 +9,18 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 # 确保 backend 包可被导入
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 加载 .env 环境变量
+def _load_env():
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, val = line.partition("=")
+                    os.environ.setdefault(key.strip(), val.strip())
+_load_env()
+
 from backend.core.database import init_db, seed_reset
 from backend.api.handlers import (
     api_get_tasks,
