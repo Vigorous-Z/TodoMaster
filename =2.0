@@ -1,0 +1,56 @@
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting supabase
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/95/06/5e6f4bf89dedadf81f893832115c1866da1aa093142c9989c2818780dae3/supabase-2.31.0-py3-none-any.whl (16 kB)
+Collecting realtime==2.31.0 (from supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/13/60/164246615e8b059f6d53d34648a0784260421ec98a07eb1e45160f063221/realtime-2.31.0-py3-none-any.whl (22 kB)
+Collecting supabase-functions==2.31.0 (from supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/90/79/1a8162ce7d705381a4f2668c0da68e097b103c1aa701418a31da52905c7b/supabase_functions-2.31.0-py3-none-any.whl (8.8 kB)
+Collecting storage3==2.31.0 (from supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/2f/b2/60d86a3a99ae743e8a00a6df912f85269b3bc882ba217b8ce1690881c669/storage3-2.31.0-py3-none-any.whl (28 kB)
+Collecting supabase-auth==2.31.0 (from supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/ca/5e/22f3b0546bb1f0985f06fb1ebf5f6405a3b1bb7a5db01142c26cf148e988/supabase_auth-2.31.0-py3-none-any.whl (48 kB)
+Collecting postgrest==2.31.0 (from supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/ea/3e/41909586cb148db0259e0208310067afda4cc097f4c7a779e829c1e68c46/postgrest-2.31.0-py3-none-any.whl (23 kB)
+Requirement already satisfied: httpx<0.29,>=0.26 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from supabase) (0.28.1)
+Requirement already satisfied: yarl>=1.22.0 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from supabase) (1.24.2)
+Collecting deprecation>=2.1.0 (from postgrest==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl (11 kB)
+Requirement already satisfied: pydantic<3.0,>=1.9 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from postgrest==2.31.0->supabase) (2.13.4)
+Collecting strenum>=0.4.9 (from postgrest==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/81/69/297302c5f5f59c862faa31e6cb9a4cd74721cd1e052b38e464c5b402df8b/StrEnum-0.4.15-py3-none-any.whl (8.9 kB)
+Requirement already satisfied: typing-extensions>=4.14.0 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from realtime==2.31.0->supabase) (4.15.0)
+Collecting websockets<16,>=11 (from realtime==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/1c/46/aca7082012768bb98e5608f01658ff3ac8437e563eca41cf068bd5849a5e/websockets-15.0.1-cp310-cp310-win_amd64.whl (176 kB)
+Collecting pyjwt>=2.12.0 (from pyjwt[crypto]>=2.12.0->supabase-auth==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/a3/5e/ecf12fdb62546d64385c158514e9b2b671f7832108ef2ecd2020ce0af2d1/pyjwt-2.13.0-py3-none-any.whl (31 kB)
+Requirement already satisfied: anyio in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from httpx<0.29,>=0.26->supabase) (4.13.0)
+Requirement already satisfied: certifi in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from httpx<0.29,>=0.26->supabase) (2024.8.30)
+Requirement already satisfied: httpcore==1.* in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from httpx<0.29,>=0.26->supabase) (1.0.9)
+Requirement already satisfied: idna in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from httpx<0.29,>=0.26->supabase) (3.10)
+Requirement already satisfied: h11>=0.16 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from httpcore==1.*->httpx<0.29,>=0.26->supabase) (0.16.0)
+Collecting h2<5,>=3 (from httpx[http2]<0.29,>=0.26->postgrest==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/69/b2/119f6e6dcbd96f9069ce9a2665e0146588dc9f88f29549711853645e736a/h2-4.3.0-py3-none-any.whl (61 kB)
+Collecting hyperframe<7,>=6.1 (from h2<5,>=3->httpx[http2]<0.29,>=0.26->postgrest==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/48/30/47d0bf6072f7252e6521f3447ccfa40b421b6824517f82854703d0f5a98b/hyperframe-6.1.0-py3-none-any.whl (13 kB)
+Collecting hpack<5,>=4.1 (from h2<5,>=3->httpx[http2]<0.29,>=0.26->postgrest==2.31.0->supabase)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/71/b4/4a9fcfb2aef6ba44d9073ecd301443aa00b3dac95de5619f2a7de7ec8a91/hpack-4.2.0-py3-none-any.whl (34 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from pydantic<3.0,>=1.9->postgrest==2.31.0->supabase) (0.7.0)
+Requirement already satisfied: pydantic-core==2.46.4 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from pydantic<3.0,>=1.9->postgrest==2.31.0->supabase) (2.46.4)
+Requirement already satisfied: typing-inspection>=0.4.2 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from pydantic<3.0,>=1.9->postgrest==2.31.0->supabase) (0.4.2)
+Requirement already satisfied: packaging in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from deprecation>=2.1.0->postgrest==2.31.0->supabase) (24.0)
+Requirement already satisfied: cryptography>=3.4.0 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from pyjwt[crypto]>=2.12.0->supabase-auth==2.31.0->supabase) (46.0.3)
+Requirement already satisfied: cffi>=2.0.0 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from cryptography>=3.4.0->pyjwt[crypto]>=2.12.0->supabase-auth==2.31.0->supabase) (2.0.0)
+Requirement already satisfied: pycparser in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from cffi>=2.0.0->cryptography>=3.4.0->pyjwt[crypto]>=2.12.0->supabase-auth==2.31.0->supabase) (2.22)
+Requirement already satisfied: multidict>=4.0 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from yarl>=1.22.0->supabase) (6.7.1)
+Requirement already satisfied: propcache>=0.2.1 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from yarl>=1.22.0->supabase) (0.5.2)
+Requirement already satisfied: exceptiongroup>=1.0.2 in c:\users\lenovo\appdata\local\programs\python\python310\lib\site-packages (from anyio->httpx<0.29,>=0.26->supabase) (1.2.2)
+Installing collected packages: strenum, websockets, pyjwt, hyperframe, hpack, deprecation, h2, realtime, supabase-functions, supabase-auth, storage3, postgrest, supabase
+  Attempting uninstall: websockets
+    Found existing installation: websockets 16.0
+    Uninstalling websockets-16.0:
+      Successfully uninstalled websockets-16.0
+
+Successfully installed deprecation-2.1.0 h2-4.3.0 hpack-4.2.0 hyperframe-6.1.0 postgrest-2.31.0 pyjwt-2.13.0 realtime-2.31.0 storage3-2.31.0 strenum-0.4.15 supabase-2.31.0 supabase-auth-2.31.0 supabase-functions-2.31.0 websockets-15.0.1
+
+[notice] A new release of pip is available: 25.3 -> 26.1.2
+[notice] To update, run: python.exe -m pip install --upgrade pip

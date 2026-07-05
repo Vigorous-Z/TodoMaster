@@ -22,7 +22,7 @@ class LocalTaskRepo:
     def get(self, task_uuid: str) -> Task | None:
         conn = get_connection()
         row = conn.execute(
-            "SELECT * FROM tasks WHERE uuid = ? AND deleted_at IS NULL", (task_uuid,)
+            "SELECT * FROM tasks WHERE uuid = ?", (task_uuid,)
         ).fetchone()
         conn.close()
         return Task.from_row(dict(row)) if row else None
@@ -32,12 +32,12 @@ class LocalTaskRepo:
         conn = get_connection()
         if owner_id is not None:
             rows = conn.execute(
-                "SELECT * FROM tasks WHERE deleted_at IS NULL AND user_id = ? ORDER BY sort_order, created_at DESC",
+                "SELECT * FROM tasks WHERE user_id = ? ORDER BY sort_order, created_at DESC",
                 (owner_id,),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM tasks WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY sort_order, created_at DESC"
+                "SELECT * FROM tasks WHERE user_id IS NULL ORDER BY sort_order, created_at DESC"
             ).fetchall()
         conn.close()
         return [Task.from_row(dict(r)) for r in rows]
@@ -46,7 +46,7 @@ class LocalTaskRepo:
         """游客任务（user_id IS NULL）"""
         conn = get_connection()
         rows = conn.execute(
-            "SELECT * FROM tasks WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY sort_order, created_at DESC"
+            "SELECT * FROM tasks WHERE user_id IS NULL ORDER BY sort_order, created_at DESC"
         ).fetchall()
         conn.close()
         return [Task.from_row(dict(r)) for r in rows]
@@ -56,7 +56,7 @@ class LocalTaskRepo:
         conn = get_connection()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         c = conn.execute(
-            "UPDATE tasks SET user_id = ?, updated_at = ? WHERE deleted_at IS NULL AND user_id IS NULL",
+            "UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL",
             (user_id, now),
         )
         count = c.rowcount
@@ -69,7 +69,7 @@ class LocalTaskRepo:
         conn = get_connection()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         c = conn.execute(
-            "UPDATE tasks SET user_id = NULL, updated_at = ? WHERE deleted_at IS NULL AND user_id = ?",
+            "UPDATE tasks SET user_id = NULL, updated_at = ? WHERE user_id = ?",
             (now, user_id),
         )
         count = c.rowcount
@@ -88,9 +88,37 @@ class LocalTaskRepo:
         conn.close()
         return task
 
-    def soft_delete(self, task_uuid: str) -> None:
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    def delete(self, task_uuid: str) -> None:
         conn = get_connection()
-        conn.execute("UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE uuid = ?", (now, now, task_uuid))
+        conn.execute("DELETE FROM tasks WHERE uuid = ?", (task_uuid,))
         conn.commit()
         conn.close()
+
+    def wipe_all(self, owner_id: str | None) -> int:
+        """删除指定用户（或游客）的全部任务，返回删除数量"""
+        conn = get_connection()
+        if owner_id is not None:
+            c = conn.execute("DELETE FROM tasks WHERE user_id = ?", (owner_id,))
+        else:
+            c = conn.execute("DELETE FROM tasks WHERE user_id IS NULL")
+        count = c.rowcount
+        conn.commit()
+        conn.close()
+        return count
+
+    def add_bulk(self, tasks: list) -> int:
+        """批量插入任务（用于云端同步拉取），跳过已存在的 uuid"""
+        conn = get_connection()
+        count = 0
+        for task in tasks:
+            row = task.to_row()
+            cols = ", ".join(row.keys())
+            placeholders = ", ".join(["?"] * len(row))
+            conn.execute(
+                f"INSERT OR REPLACE INTO tasks ({cols}) VALUES ({placeholders})",
+                list(row.values()),
+            )
+            count += 1
+        conn.commit()
+        conn.close()
+        return count

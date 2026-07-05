@@ -70,19 +70,21 @@ const loginPwd = ref('')
 async function doLogin() {
   error.value = ''
   try {
-    // 检测游客任务数量
-    const guestCount = await taskStore.getGuestTaskCount()
-    if (guestCount > 0) {
-      if (!confirm(`当前有 ${guestCount} 个游客任务。登录后账号数据将覆盖当前任务，是否继续？`)) {
-        return
-      }
-    }
     await userStore.login(loginId.value.trim(), loginPwd.value)
     loginId.value = ''
     loginPwd.value = ''
-    // 加载该用户的任务
     const uid = userStore.user?.user_id
+    // 先加载本地数据
     await taskStore.loadTasks(uid)
+    const localCount = taskStore.tasks.length
+    // 从云端拉取——云端优先
+    const result = await taskStore.cloudPull()
+    const cloudCount = result?.count || 0
+    // 云端空但本地有数据：首次使用，把本地数据推到云端
+    if (cloudCount === 0 && localCount > 0) {
+      await taskStore.cloudPush()
+      await taskStore.loadTasks(uid)
+    }
   } catch (e) {
     error.value = e.message
   }
@@ -97,8 +99,8 @@ async function doRegister() {
   try {
     await userStore.register(regPrefix.value.trim(), regPwd.value)
     const uid = userStore.user?.user_id
-    // 将游客任务绑定到新注册账号
-    await taskStore.bindGuestTasks(uid)
+    // 新账号独立数据空间，加载空任务列表
+    await taskStore.loadTasks(uid)
     regPrefix.value = ''
     regPwd.value = ''
     showId.value = ''

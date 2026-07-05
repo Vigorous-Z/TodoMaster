@@ -12,20 +12,32 @@
               <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
             </svg>
           </button>
+          <button
+            class="btn-sync"
+            :class="{ syncing: store.syncStatus === 'syncing', done: store.syncStatus === 'done' }"
+            :title="syncTitle"
+            :disabled="store.syncStatus === 'syncing' || !store.currentOwnerId"
+            @click="store.cloudSync()"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+              <path d="M21 2v6h-6M3 22v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            <span class="sync-label">{{ syncLabel }}</span>
+          </button>
         </div>
         <span class="date">{{ todayStr }}</span>
       </header>
 
-      <AddTask />
-      <TaskList />
+      <AddTask :editingTask="editingTask" @done="editingTask = null" />
+      <TaskList @edit="onEditTask" />
     </main>
     <DetailPanel />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { computed } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useTaskStore } from './stores/taskStore.js'
 import { useUserStore } from './stores/userStore.js'
 import Sidebar from './components/Sidebar.vue'
@@ -50,10 +62,13 @@ onMounted(() => {
   })
 
   // 加载数据——PyWebView API 异步注入，需等待就绪
-  // 用户状态和任务数据一起加载
-  const loadAll = () => {
-    userStore.loadUser()
-    store.loadTasks()
+  const loadAll = async () => {
+    await userStore.loadUser()
+    if (userStore.isLoggedIn) {
+      await store.loadTasks(userStore.user.user_id)
+    } else {
+      await store.loadTasks()
+    }
   }
   if (window.pywebview?.api?.api_get_tasks) {
     loadAll()
@@ -68,6 +83,11 @@ onMounted(() => {
 
 const store = useTaskStore()
 const userStore = useUserStore()
+const editingTask = ref(null)
+
+function onEditTask(task) {
+  editingTask.value = task
+}
 
 const viewMap = {
   today: '今天',
@@ -80,6 +100,17 @@ const viewMap = {
 }
 
 const viewTitle = computed(() => viewMap[store.currentView] || '任务')
+
+const syncLabel = computed(() => {
+  if (store.syncStatus === 'syncing') return '同步中…'
+  if (store.syncStatus === 'done') return '已同步'
+  return store.currentOwnerId ? '同步' : '请登录'
+})
+const syncTitle = computed(() => {
+  if (!store.currentOwnerId) return '请先登录后同步'
+  if (store.syncStatus === 'syncing') return '正在同步…'
+  return '同步至云端'
+})
 
 const now = new Date()
 const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
@@ -182,6 +213,32 @@ body {
 }
 .btn-refresh:hover { background: var(--bg-hover); color: var(--text-secondary); }
 .btn-refresh:active { color: var(--accent); }
+
+.btn-sync {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+  display: flex; align-items: center; gap: 4px;
+  transition: all var(--transition);
+}
+.btn-sync:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.btn-sync:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sync.syncing { color: var(--accent); border-color: var(--accent); }
+.btn-sync.syncing svg { animation: spin 0.8s linear infinite; }
+.btn-sync.done { color: var(--green); border-color: var(--green); }
+.btn-sync svg { stroke: currentColor; fill: none; stroke-width: 1.6; }
+.sync-label { white-space: nowrap; line-height: 1; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .main-header .date {
   display: block;

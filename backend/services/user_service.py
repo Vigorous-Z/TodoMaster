@@ -49,6 +49,12 @@ def register(prefix: str, password: str) -> dict:
     conn.close()
     # 生成 token
     token = secrets.token_urlsafe(32)
+    # 同步到云端
+    try:
+        from backend.cloud.supabase_sync import push_user
+        push_user(user_id)
+    except Exception:
+        pass
     return {"user": {"user_id": user_id, "prefix": prefix, "created_at": now}, "token": token}
 
 
@@ -56,11 +62,24 @@ def login(user_id: str, password: str) -> dict:
     conn = get_connection()
     row = conn.execute("SELECT * FROM local_users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
+
+    # 本地没找到，尝试从云端拉取
     if not row:
-        raise ValueError("用户不存在")
+        from backend.cloud.supabase_sync import find_user_in_cloud
+        cloud_user = find_user_in_cloud(user_id)
+        if not cloud_user:
+            raise ValueError("用户不存在")
+        row = cloud_user
+
     if not _check_password(password, row["password_hash"]):
         raise ValueError("密码错误")
     token = secrets.token_urlsafe(32)
+    # 登录成功，同步用户到云端（确保云端也有此用户）
+    try:
+        from backend.cloud.supabase_sync import push_user
+        push_user(row["user_id"])
+    except Exception:
+        pass
     return {
         "user": {"user_id": row["user_id"], "prefix": row["prefix"], "created_at": row["created_at"]},
         "token": token,

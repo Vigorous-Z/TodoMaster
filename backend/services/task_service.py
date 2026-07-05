@@ -31,7 +31,7 @@ class TaskService:
         return existing.to_frontend()
 
     def delete(self, task_uuid: str) -> None:
-        self.repo.soft_delete(task_uuid)
+        self.repo.delete(task_uuid)
 
     def toggle(self, task_uuid: str) -> dict:
         existing = self.repo.get(task_uuid)

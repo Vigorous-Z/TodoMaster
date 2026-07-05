@@ -15,6 +15,9 @@
       </div>
     </div>
     <div class="task-actions">
+      <button class="btn-icon" @click.stop="emit('edit')" title="编辑">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
       <button class="btn-icon danger" @click.stop="emit('delete')" title="删除">
         <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
@@ -24,7 +27,7 @@
 
 <script setup>
 const props = defineProps(['task'])
-const emit = defineEmits(['toggle', 'delete', 'select'])
+const emit = defineEmits(['toggle', 'delete', 'select', 'edit'])
 
 // 相对日期显示
 function relDate(dueStr) {
@@ -177,11 +180,13 @@ function priorityLabel(p) {
 .task-actions {
   display: flex;
   gap: 2px;
+  visibility: hidden;
   opacity: 0;
-  transition: opacity var(--transition);
+  transition: opacity var(--transition), visibility var(--transition);
 }
 
 .task-item:hover .task-actions {
+  visibility: visible;
   opacity: 1;
 }
 

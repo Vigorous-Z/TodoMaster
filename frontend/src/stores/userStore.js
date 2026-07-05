@@ -101,16 +101,22 @@ export const useUserStore = defineStore('user', {
       const result = await adapter.register(prefix.trim(), password)
       this.user = result.user
       this.token = result.token
+      localAdapter._write(STORAGE_KEY_USER, result.user)
+      localAdapter._write(STORAGE_KEY_TOKEN, result.token)
     },
     async login(userId, password) {
       const adapter = getAdapter()
       const result = await adapter.login(userId.trim(), password)
       this.user = result.user
       this.token = result.token
+      localAdapter._write(STORAGE_KEY_USER, result.user)
+      localAdapter._write(STORAGE_KEY_TOKEN, result.token)
     },
     async logout() {
       const adapter = getAdapter()
       await adapter.logout()
+      localAdapter._remove(STORAGE_KEY_USER)
+      localAdapter._remove(STORAGE_KEY_TOKEN)
       this.user = null
       this.token = null
       this.showSettings = false

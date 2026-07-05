@@ -59,6 +59,15 @@ const localAdapter = {
     }
     return Promise.resolve()
   },
+  updateTask(id, data) {
+    const tasks = this._read()
+    const idx = tasks.findIndex(t => t.id === id)
+    if (idx !== -1) {
+      tasks[idx] = { ...tasks[idx], ...data }
+      this._write(tasks)
+    }
+    return Promise.resolve()
+  },
 }
 
 /** PyWebView 模式——js_api 同步调用 */
@@ -93,6 +102,18 @@ const bridgeAdapter = {
   deleteTask(id) {
     window.pywebview.api.api_delete_task(id)
   },
+  updateTask(id, data) {
+    return window.pywebview.api.api_update_task(id, data)
+  },
+  cloudSync(userId) {
+    return window.pywebview.api.api_cloud_sync({ user_id: userId })
+  },
+  cloudPull(userId) {
+    return window.pywebview.api.api_cloud_pull({ user_id: userId })
+  },
+  cloudPush(userId) {
+    return window.pywebview.api.api_cloud_push({ user_id: userId })
+  },
 }
 
 /** 就绪检测：PyWebView 注入 api 是异步的，轮询等待 */
@@ -115,6 +136,7 @@ export const useTaskStore = defineStore('task', {
     currentView: 'today',
     selectedTaskId: null,
     currentOwnerId: null,
+    syncStatus: 'idle',  // idle | syncing | done
   }),
 
   getters: {
@@ -193,14 +215,22 @@ export const useTaskStore = defineStore('task', {
       await this.loadTasks(this.currentOwnerId)
     },
     async toggleTask(id) {
-      const adapter = getAdapter()
-      await adapter.toggleTask(id)
-      await this.loadTasks(this.currentOwnerId)
+      const task = this.tasks.find(t => t.id === id)
+      if (task) {
+        task.done = !task.done
+        const adapter = getAdapter()
+        await adapter.toggleTask(id)
+      }
     },
     async deleteTask(id) {
+      this.tasks = this.tasks.filter(t => t.id !== id)
+      if (this.selectedTaskId === id) this.selectedTaskId = null
       const adapter = getAdapter()
       await adapter.deleteTask(id)
-      if (this.selectedTaskId === id) this.selectedTaskId = null
+    },
+    async updateTask(id, data) {
+      const adapter = getAdapter()
+      await adapter.updateTask(id, data)
       await this.loadTasks(this.currentOwnerId)
     },
     async bindGuestTasks(ownerId) {
@@ -214,6 +244,29 @@ export const useTaskStore = defineStore('task', {
         return bridgeAdapter.getGuestTaskCount()
       }
       return 0
+    },
+    async cloudSync() {
+      if (!isBridgeReady() || !this.currentOwnerId) return
+      this.syncStatus = 'syncing'
+      try {
+        const result = bridgeAdapter.cloudSync(this.currentOwnerId)
+        await this.loadTasks(this.currentOwnerId)
+        this.syncStatus = 'done'
+        setTimeout(() => { this.syncStatus = 'idle' }, 3000)
+        return result
+      } catch {
+        this.syncStatus = 'idle'
+      }
+    },
+    async cloudPull() {
+      if (!isBridgeReady() || !this.currentOwnerId) return { count: 0 }
+      const result = bridgeAdapter.cloudPull(this.currentOwnerId)
+      await this.loadTasks(this.currentOwnerId)
+      return result
+    },
+    async cloudPush() {
+      if (!isBridgeReady() || !this.currentOwnerId) return { count: 0 }
+      return bridgeAdapter.cloudPush(this.currentOwnerId)
     },
     setView(view) {
       this.currentView = view

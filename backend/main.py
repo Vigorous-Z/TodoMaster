@@ -23,6 +23,10 @@ from backend.api.handlers import (
     api_get_guest_task_count,
     api_bind_guest_tasks,
     api_unbind_user_tasks,
+    api_cloud_sync,
+    api_cloud_push,
+    api_cloud_pull,
+    api_find_user_in_cloud,
 )
 
 
@@ -40,6 +44,10 @@ class ApiBridge:
     api_get_guest_task_count = staticmethod(api_get_guest_task_count)
     api_bind_guest_tasks = staticmethod(api_bind_guest_tasks)
     api_unbind_user_tasks = staticmethod(api_unbind_user_tasks)
+    api_cloud_sync = staticmethod(api_cloud_sync)
+    api_cloud_push = staticmethod(api_cloud_push)
+    api_cloud_pull = staticmethod(api_cloud_pull)
+    api_find_user_in_cloud = staticmethod(api_find_user_in_cloud)
 
 
 class QuietHandler(SimpleHTTPRequestHandler):

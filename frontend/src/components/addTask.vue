@@ -1,17 +1,17 @@
 <template>
   <div class="add-task-area">
     <div class="add-task-row" :class="{ focused: isFocused }">
-      <span class="plus" @click="handleAdd">+</span>
+      <span class="plus" @click="handleSubmit">{{ editingTask ? '✎' : '+' }}</span>
       <input
         ref="inputRef"
         class="add-task-input"
         type="text"
         v-model="newTaskTitle"
-        placeholder="添加任务，或输入自然语言描述让 AI 解析…"
+        :placeholder="editingTask ? '编辑任务…' : '添加任务，或输入自然语言描述让 AI 解析…'"
         autocomplete="off"
         @focus="isFocused = true"
         @blur="isFocused = false"
-        @keydown.enter="handleAdd"
+        @keydown.enter="handleSubmit"
       />
       <div class="add-task-actions">
         <button class="btn-icon" :class="{ active: panelOpen }" title="更多设置" @click="panelOpen = !panelOpen">
@@ -55,14 +55,24 @@
           <label>任务描述</label>
           <input type="text" v-model="description" placeholder="可添加任务细节说明…" />
         </div>
+        <div v-if="editingTask" class="panel-field panel-field-actions">
+          <button class="btn-save" @click="handleSubmit">保存</button>
+          <button class="btn-cancel" @click="handleCancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
+
+const props = defineProps({
+  editingTask: { type: Object, default: null },
+})
+
+const emit = defineEmits(['done'])
 
 const store = useTaskStore()
 const newTaskTitle = ref('')
@@ -70,7 +80,6 @@ const isFocused = ref(false)
 const inputRef = ref(null)
 const panelOpen = ref(false)
 
-// 面板内的选项
 function getDefaultDue() {
   const now = new Date()
   const m = String(now.getMonth() + 1).padStart(2, '0')
@@ -99,20 +108,52 @@ function toggleTag(tag) {
   }
 }
 
-const handleAdd = () => {
-  const title = newTaskTitle.value.trim()
-  if (!title) return
+// 监听 editingTask 变化，预填表单
+watch(() => props.editingTask, (task) => {
+  if (task) {
+    newTaskTitle.value = task.title || ''
+    dueDate.value = (task.due || '').replace(' ', 'T') || getDefaultDue()
+    priority.value = task.priority || 'medium'
+    tags.value = task.tags ? [...task.tags] : []
+    description.value = task.description || ''
+    panelOpen.value = true
+  }
+}, { immediate: true })
 
-  const due = dueDate.value ? dueDate.value.replace('T', ' ') : undefined
-store.addTask(title, due, priority.value, [...tags.value], description.value, null)
-
-  // 重置状态
+function resetForm() {
   newTaskTitle.value = ''
   dueDate.value = getDefaultDue()
   priority.value = 'medium'
   tags.value = []
   description.value = ''
   panelOpen.value = false
+}
+
+const handleSubmit = () => {
+  const title = newTaskTitle.value.trim()
+  if (!title) return
+
+  const due = dueDate.value ? dueDate.value.replace('T', ' ') : undefined
+
+  if (props.editingTask) {
+    store.updateTask(props.editingTask.id, {
+      title,
+      due,
+      priority: priority.value,
+      tags: [...tags.value],
+      description: description.value,
+    })
+    emit('done')
+  } else {
+    store.addTask(title, due, priority.value, [...tags.value], description.value, null)
+  }
+
+  resetForm()
+}
+
+function handleCancel() {
+  resetForm()
+  emit('done')
 }
 
 defineExpose({ inputRef })
@@ -313,6 +354,46 @@ defineExpose({ inputRef })
   background: var(--accent-subtle);
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* 编辑模式按钮 */
+.panel-field-actions {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-save {
+  padding: 5px 16px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.btn-save:hover {
+  background: var(--accent-hover);
+}
+
+.btn-cancel {
+  padding: 5px 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-cancel:hover {
+  background: var(--bg-hover);
 }
 
 @media (max-width: 640px) {

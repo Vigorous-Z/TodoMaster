@@ -11,3 +11,4 @@
 {"arguments":{"url":"file:///f:/TodoMaster/web/index.html"},"level":"debug","message":"Tool call received","service":"mcp-puppeteer","timestamp":"2026-07-02 23:07:30.621","tool":"puppeteer_navigate"}
 {"level":"info","message":"Navigating to URL","service":"mcp-puppeteer","timestamp":"2026-07-02 23:07:30.622","url":"file:///f:/TodoMaster/web/index.html"}
 {"error":"Attempted to use detached Frame '99984C466F09EB426C06D11604EC46E7'.","level":"error","message":"Navigation failed","service":"mcp-puppeteer","timestamp":"2026-07-02 23:07:30.622","url":"file:///f:/TodoMaster/web/index.html"}
+{"level":"info","message":"Puppeteer MCP Server closing","service":"mcp-puppeteer","timestamp":"2026-07-02 23:12:42.399"}

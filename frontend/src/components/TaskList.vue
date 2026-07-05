@@ -17,6 +17,7 @@
           @toggle="store.toggleTask(task.id)"
           @delete="store.deleteTask(task.id)"
           @select="store.selectTask(task.id)"
+          @edit="$emit('edit', task)"
         />
       </div>
     </template>
@@ -27,6 +28,8 @@
 import { computed } from 'vue'
 import { useTaskStore } from '../stores/taskStore.js'
 import TaskItem from './TaskItem.vue'
+
+defineEmits(['edit'])
 
 const store = useTaskStore()
 
