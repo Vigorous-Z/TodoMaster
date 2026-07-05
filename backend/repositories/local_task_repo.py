@@ -27,13 +27,55 @@ class LocalTaskRepo:
         conn.close()
         return Task.from_row(dict(row)) if row else None
 
-    def list_all(self) -> list[Task]:
+    def list_all(self, owner_id: str | None = None) -> list[Task]:
+        """None = 游客任务（user_id IS NULL），传值 = 指定用户任务"""
+        conn = get_connection()
+        if owner_id is not None:
+            rows = conn.execute(
+                "SELECT * FROM tasks WHERE deleted_at IS NULL AND user_id = ? ORDER BY sort_order, created_at DESC",
+                (owner_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM tasks WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY sort_order, created_at DESC"
+            ).fetchall()
+        conn.close()
+        return [Task.from_row(dict(r)) for r in rows]
+
+    def list_guest(self) -> list[Task]:
+        """游客任务（user_id IS NULL）"""
         conn = get_connection()
         rows = conn.execute(
-            "SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY sort_order, created_at DESC"
+            "SELECT * FROM tasks WHERE deleted_at IS NULL AND user_id IS NULL ORDER BY sort_order, created_at DESC"
         ).fetchall()
         conn.close()
         return [Task.from_row(dict(r)) for r in rows]
+
+    def bind_guest_to_user(self, user_id: str) -> int:
+        """将游客任务绑定到指定用户，返回绑定数量"""
+        conn = get_connection()
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        c = conn.execute(
+            "UPDATE tasks SET user_id = ?, updated_at = ? WHERE deleted_at IS NULL AND user_id IS NULL",
+            (user_id, now),
+        )
+        count = c.rowcount
+        conn.commit()
+        conn.close()
+        return count
+
+    def unbind_user_tasks(self, user_id: str) -> int:
+        """将用户任务解绑为游客任务，返回解绑数量"""
+        conn = get_connection()
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        c = conn.execute(
+            "UPDATE tasks SET user_id = NULL, updated_at = ? WHERE deleted_at IS NULL AND user_id = ?",
+            (now, user_id),
+        )
+        count = c.rowcount
+        conn.commit()
+        conn.close()
+        return count
 
     def update(self, task: Task) -> Task:
         task.version += 1

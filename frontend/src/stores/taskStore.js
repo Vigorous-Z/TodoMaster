@@ -63,11 +63,20 @@ const localAdapter = {
 
 /** PyWebView 模式——js_api 同步调用 */
 const bridgeAdapter = {
-  getTasks() {
-    const raw = window.pywebview.api.api_get_tasks()
+  getTasks(ownerId) {
+    const raw = window.pywebview.api.api_get_tasks(ownerId ? { owner_id: ownerId } : {})
     return raw || []
   },
-  addTask(title, due, priority, tags, project, description) {
+  getGuestTaskCount() {
+    return window.pywebview.api.api_get_guest_task_count({})
+  },
+  bindGuestTasks(ownerId) {
+    return window.pywebview.api.api_bind_guest_tasks({ owner_id: ownerId })
+  },
+  unbindUserTasks(ownerId) {
+    return window.pywebview.api.api_unbind_user_tasks({ owner_id: ownerId })
+  },
+  addTask(title, due, priority, tags, project, description, ownerId) {
     return window.pywebview.api.api_add_task({
       title,
       due_date: due || fmt(new Date()) + ' 23:59',
@@ -75,6 +84,7 @@ const bridgeAdapter = {
       tags: tags || [],
       project: project || 'personal',
       description: description || '',
+      user_id: ownerId || null,
     })
   },
   toggleTask(id) {
@@ -104,6 +114,7 @@ export const useTaskStore = defineStore('task', {
     tasks: [],
     currentView: 'today',
     selectedTaskId: null,
+    currentOwnerId: null,
   }),
 
   getters: {
@@ -163,34 +174,46 @@ export const useTaskStore = defineStore('task', {
   },
 
   actions: {
-    async loadTasks() {
+    async loadTasks(ownerId) {
       let adapter = getAdapter()
-      // 若非 bridgeReady 且 localStorage 为空，延迟重试等待 pywebview 就绪
-      let data = await adapter.getTasks()
+      let data = await adapter.getTasks(ownerId)
       if (!isBridgeReady() && data.length === 0) {
         await new Promise(r => setTimeout(r, 300))
         if (isBridgeReady()) {
           adapter = bridgeAdapter
-          data = adapter.getTasks()
+          data = adapter.getTasks(ownerId)
         }
       }
       this.tasks = data
+      this.currentOwnerId = ownerId || null
     },
-    async addTask(title, due, priority, tags, project) {
+    async addTask(title, due, priority, tags, description, project) {
       const adapter = getAdapter()
-      await adapter.addTask(title, due, priority, tags, project)
-      await this.loadTasks()
+      await adapter.addTask(title, due, priority, tags, project || 'personal', description || '', this.currentOwnerId)
+      await this.loadTasks(this.currentOwnerId)
     },
     async toggleTask(id) {
       const adapter = getAdapter()
       await adapter.toggleTask(id)
-      await this.loadTasks()
+      await this.loadTasks(this.currentOwnerId)
     },
     async deleteTask(id) {
       const adapter = getAdapter()
       await adapter.deleteTask(id)
       if (this.selectedTaskId === id) this.selectedTaskId = null
-      await this.loadTasks()
+      await this.loadTasks(this.currentOwnerId)
+    },
+    async bindGuestTasks(ownerId) {
+      if (isBridgeReady() && ownerId) {
+        bridgeAdapter.bindGuestTasks(ownerId)
+        await this.loadTasks(ownerId)
+      }
+    },
+    async getGuestTaskCount() {
+      if (isBridgeReady()) {
+        return bridgeAdapter.getGuestTaskCount()
+      }
+      return 0
     },
     setView(view) {
       this.currentView = view

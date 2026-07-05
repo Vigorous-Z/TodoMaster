@@ -26,6 +26,7 @@ class Task(BaseModel):
     parent_uuid: Optional[str] = None
     sort_order: int = 0
     extras: dict = {}
+    user_id: Optional[str] = None
 
     def model_post_init(self, _ctx):
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

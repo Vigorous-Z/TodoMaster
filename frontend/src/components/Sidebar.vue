@@ -34,9 +34,12 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="hint">
-        输入自然语言，AI 自动解析为日程<br />
-        <kbd>Ctrl</kbd> + <kbd>N</kbd> 快速添加
+      <div class="footer-user" @click="userStore.toggleSettings()">
+        <span class="footer-avatar">{{ userStore.displayName.charAt(0) }}</span>
+        <span class="footer-name">{{ userStore.displayName }}</span>
+        <svg class="footer-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
       </div>
     </div>
   </aside>
@@ -44,8 +47,10 @@
 
 <script setup>
 import { useTaskStore } from '../stores/taskStore'
+import { useUserStore } from '../stores/userStore'
 
 const store = useTaskStore()
+const userStore = useUserStore()
 
 const mainViews = [
   { key: 'today', label: '今天', icon: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>` },
@@ -157,21 +162,43 @@ const projectViews = [
   padding: 12px;
   border-top: 1px solid var(--border);
 }
-.sidebar-footer .hint {
-  font-size: 11.5px;
-  color: var(--text-tertiary);
+/* 用户信息栏 */
+.footer-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 8px;
-  line-height: 1.5;
-}
-.sidebar-footer .hint kbd {
-  display: inline-block;
-  font-family: inherit;
-  font-size: 10.5px;
-  background: var(--bg-active);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
   color: var(--text-secondary);
+  transition: background var(--transition);
+}
+.footer-user:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.footer-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  flex-shrink: 0;
+}
+.footer-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.footer-gear {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.footer-user:hover .footer-gear {
+  opacity: 1;
 }
 
 @media (max-width: 640px) {

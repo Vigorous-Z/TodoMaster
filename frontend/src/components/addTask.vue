@@ -21,7 +21,8 @@
     </div>
 
     <!-- 展开的设置面板 -->
-    <div v-if="panelOpen" class="add-task-panel">
+    <div class="panel-wrapper" :class="{ open: panelOpen }">
+      <div class="add-task-panel">
       <div class="panel-field">
         <label>截止日期</label>
         <input type="datetime-local" v-model="dueDate" />
@@ -50,9 +51,10 @@
           >{{ t }}</button>
         </div>
       </div>
-      <div class="panel-field panel-field-desc">
-        <label>任务描述</label>
-        <input type="text" v-model="description" placeholder="可添加任务细节说明…" />
+        <div class="panel-field panel-field-desc">
+          <label>任务描述</label>
+          <input type="text" v-model="description" placeholder="可添加任务细节说明…" />
+        </div>
       </div>
     </div>
   </div>
@@ -102,7 +104,7 @@ const handleAdd = () => {
   if (!title) return
 
   const due = dueDate.value ? dueDate.value.replace('T', ' ') : undefined
-  store.addTask(title, due, priority.value, [...tags.value], description.value)
+store.addTask(title, due, priority.value, [...tags.value], description.value, null)
 
   // 重置状态
   newTaskTitle.value = ''
@@ -201,6 +203,17 @@ defineExpose({ inputRef })
   stroke: currentColor;
   fill: none;
   stroke-width: 1.6;
+}
+
+/* 面板包裹层——max-height 动画实现平滑下拉/收起 */
+.panel-wrapper {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-wrapper.open {
+  max-height: 400px;
 }
 
 /* 展开面板 */

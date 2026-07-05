@@ -1,9 +1,18 @@
 <template>
   <div class="app">
     <Sidebar />
+    <Settings :class="{ 'settings-visible': userStore.showSettings }" />
     <main class="main">
       <header class="main-header">
-        <h1>{{ viewTitle }}</h1>
+        <div class="main-header-top">
+          <h1>{{ viewTitle }}</h1>
+          <button class="btn-refresh" @click="store.loadTasks(store.currentOwnerId)" title="刷新任务列表">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="15" height="15">
+              <path d="M1 4v6h6M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
+            </svg>
+          </button>
+        </div>
         <span class="date">{{ todayStr }}</span>
       </header>
 
@@ -18,10 +27,12 @@
 import { onMounted, ref } from 'vue'
 import { computed } from 'vue'
 import { useTaskStore } from './stores/taskStore.js'
+import { useUserStore } from './stores/userStore.js'
 import Sidebar from './components/Sidebar.vue'
 import TaskList from './components/TaskList.vue'
 import AddTask from './components/addTask.vue'
 import DetailPanel from './components/DetailPanel.vue'
+import Settings from './components/Settings.vue'
 
 // 键盘快捷键
 onMounted(() => {
@@ -39,18 +50,24 @@ onMounted(() => {
   })
 
   // 加载数据——PyWebView API 异步注入，需等待就绪
-  if (window.pywebview?.api?.api_get_tasks) {
+  // 用户状态和任务数据一起加载
+  const loadAll = () => {
+    userStore.loadUser()
     store.loadTasks()
+  }
+  if (window.pywebview?.api?.api_get_tasks) {
+    loadAll()
   } else {
-    window.addEventListener('pywebviewready', () => store.loadTasks())
+    window.addEventListener('pywebviewready', () => loadAll())
     // 500ms 兜底：纯浏览器无 PyWebView 时用 localStorage
     setTimeout(() => {
-      if (!window.pywebview?.api) store.loadTasks()
+      if (!window.pywebview?.api) loadAll()
     }, 500)
   }
 })
 
 const store = useTaskStore()
+const userStore = useUserStore()
 
 const viewMap = {
   today: '今天',
@@ -125,6 +142,7 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
 }
 
 .main {
@@ -140,12 +158,30 @@ body {
   flex-shrink: 0;
 }
 
-.main-header h1 {
+.main-header-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.main-header-top h1 {
   font-size: 22px;
   font-weight: 650;
   color: var(--text-primary);
   letter-spacing: -0.02em;
 }
+
+.btn-refresh {
+  width: 28px; height: 28px;
+  border: none; background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.btn-refresh:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.btn-refresh:active { color: var(--accent); }
 
 .main-header .date {
   display: block;

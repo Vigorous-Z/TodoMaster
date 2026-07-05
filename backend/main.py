@@ -1,4 +1,5 @@
 """PyWebView 启动入口"""
+import argparse
 import sys
 import os
 import threading
@@ -8,13 +9,20 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 # 确保 backend 包可被导入
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.core.database import init_db
+from backend.core.database import init_db, seed_reset
 from backend.api.handlers import (
     api_get_tasks,
     api_add_task,
     api_update_task,
     api_delete_task,
     api_toggle_task,
+    api_register,
+    api_login,
+    api_get_current_user,
+    api_logout,
+    api_get_guest_task_count,
+    api_bind_guest_tasks,
+    api_unbind_user_tasks,
 )
 
 
@@ -25,6 +33,13 @@ class ApiBridge:
     api_update_task = staticmethod(api_update_task)
     api_delete_task = staticmethod(api_delete_task)
     api_toggle_task = staticmethod(api_toggle_task)
+    api_register = staticmethod(api_register)
+    api_login = staticmethod(api_login)
+    api_get_current_user = staticmethod(api_get_current_user)
+    api_logout = staticmethod(api_logout)
+    api_get_guest_task_count = staticmethod(api_get_guest_task_count)
+    api_bind_guest_tasks = staticmethod(api_bind_guest_tasks)
+    api_unbind_user_tasks = staticmethod(api_unbind_user_tasks)
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -49,7 +64,16 @@ def _find_free_port():
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", action="store_true", help="清空 tasks 并重新注入种子数据")
+    args = parser.parse_args()
+
     init_db()
+
+    if args.seed:
+        count = seed_reset()
+        print(f"种子数据已重新注入，共 {count} 条")
+
     bridge = ApiBridge()
 
     # Vite 构建产物路径
