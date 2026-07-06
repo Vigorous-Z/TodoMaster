@@ -92,3 +92,15 @@ def api_find_user_in_cloud(data: dict) -> dict:
     if result:
         return {"success": True, "found": True, "user": {"user_id": result["user_id"], "prefix": result["prefix"], "created_at": result["created_at"]}}
     return {"success": True, "found": False}
+
+
+# ---- AI 解析 API ----
+from backend.services.ai_service import parse as ai_parse
+
+
+def api_ai_parse(data: dict) -> dict:
+    """自然语言 → 结构化日程解析"""
+    text = data.get("text", "")
+    if not text.strip():
+        return {"error": "输入为空"}
+    return ai_parse(text.strip())

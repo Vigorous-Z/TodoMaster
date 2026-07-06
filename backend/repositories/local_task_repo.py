@@ -16,6 +16,7 @@ class LocalTaskRepo:
         placeholders = ", ".join(["?"] * len(row))
         conn.execute(f"INSERT INTO tasks ({cols}) VALUES ({placeholders})", list(row.values()))
         conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(FULL)")
         conn.close()
         return task
 
@@ -85,6 +86,7 @@ class LocalTaskRepo:
         conn = get_connection()
         conn.execute(f"UPDATE tasks SET {set_clause} WHERE uuid = ?", list(row.values()) + [task.uuid])
         conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(FULL)")
         conn.close()
         return task
 
@@ -92,6 +94,7 @@ class LocalTaskRepo:
         conn = get_connection()
         conn.execute("DELETE FROM tasks WHERE uuid = ?", (task_uuid,))
         conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(FULL)")
         conn.close()
 
     def wipe_all(self, owner_id: str | None) -> int:

@@ -39,6 +39,7 @@ from backend.api.handlers import (
     api_cloud_push,
     api_cloud_pull,
     api_find_user_in_cloud,
+    api_ai_parse,
 )
 
 
@@ -60,6 +61,7 @@ class ApiBridge:
     api_cloud_push = staticmethod(api_cloud_push)
     api_cloud_pull = staticmethod(api_cloud_pull)
     api_find_user_in_cloud = staticmethod(api_find_user_in_cloud)
+    api_ai_parse = staticmethod(api_ai_parse)
 
 
 class QuietHandler(SimpleHTTPRequestHandler):

@@ -18,7 +18,8 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
-# DB runtime files
+# DB
+data/data.db
 data/*.db-shm
 data/*.db-wal
 

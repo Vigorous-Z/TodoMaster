@@ -9,9 +9,6 @@ class TaskService:
     def __init__(self):
         self.repo = LocalTaskRepo()
 
-    def get_all(self, owner_id: str | None = None) -> list[dict]:
-        return [t.to_frontend() for t in self.repo.list_all(owner_id)]
-
     def get_guest_count(self) -> int:
         return len(self.repo.list_guest())
 
@@ -19,6 +16,9 @@ class TaskService:
         task = Task(**data)
         self.repo.add(task)
         return task.to_frontend()
+
+    def get_all(self, owner_id: str | None = None) -> list[dict]:
+        return [t.to_frontend() for t in self.repo.list_all(owner_id)]
 
     def update(self, task_uuid: str, data: dict) -> dict:
         existing = self.repo.get(task_uuid)

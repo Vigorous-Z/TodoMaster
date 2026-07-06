@@ -7,13 +7,23 @@
         class="add-task-input"
         type="text"
         v-model="newTaskTitle"
-        :placeholder="editingTask ? '编辑任务…' : '添加任务，或输入自然语言描述让 AI 解析…'"
+        :placeholder="aiParsing ? 'AI 解析中…' : editingTask ? '编辑任务…' : '添加任务，或输入自然语言描述让 AI 解析…'"
         autocomplete="off"
         @focus="isFocused = true"
         @blur="isFocused = false"
         @keydown.enter="handleSubmit"
       />
       <div class="add-task-actions">
+        <button
+          class="btn-ai"
+          :class="{ loading: aiParsing }"
+          :disabled="aiParsing || !newTaskTitle.trim()"
+          title="AI 解析自然语言"
+          @click="handleAiParse"
+        >
+          <img v-if="!aiParsing" :src="dsIcon" width="14" height="14" alt="AI" />
+          <span class="ai-spin" v-else>⟳</span>
+        </button>
         <button class="btn-icon" :class="{ active: panelOpen }" title="更多设置" @click="panelOpen = !panelOpen">
           <svg viewBox="0 0 24 24"><path d="M6 12l4-8 4 8H6zM14 16l-4 8-4-8h8z"/></svg>
         </button>
@@ -67,6 +77,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
+import dsIcon from '../assets/ds.svg'
 
 const props = defineProps({
   editingTask: { type: Object, default: null },
@@ -79,6 +90,7 @@ const newTaskTitle = ref('')
 const isFocused = ref(false)
 const inputRef = ref(null)
 const panelOpen = ref(false)
+const aiParsing = ref(false)
 
 function getDefaultDue() {
   const now = new Date()
@@ -108,6 +120,31 @@ function toggleTag(tag) {
   }
 }
 
+async function handleAiParse() {
+  const text = newTaskTitle.value.trim()
+  if (!text) return
+  aiParsing.value = true
+  await new Promise(r => requestAnimationFrame(r))
+  try {
+    const result = await store.aiParse(text)
+    if (result.error) {
+      alert(result.error)
+      return
+    }
+    newTaskTitle.value = result.title || text
+    if (result.due_date) {
+      dueDate.value = result.due_date.replace(' ', 'T').slice(0, 16) || getDefaultDue()
+    }
+    priority.value = result.priority || 'medium'
+    tags.value = result.tags || []
+    description.value = result.description || ''
+    panelOpen.value = true
+  } finally {
+    aiParsing.value = false
+    inputRef.value?.focus()
+  }
+}
+
 // 监听 editingTask 变化，预填表单
 watch(() => props.editingTask, (task) => {
   if (task) {
@@ -129,23 +166,28 @@ function resetForm() {
   panelOpen.value = false
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   const title = newTaskTitle.value.trim()
   if (!title) return
 
   const due = dueDate.value ? dueDate.value.replace('T', ' ') : undefined
 
-  if (props.editingTask) {
-    store.updateTask(props.editingTask.id, {
-      title,
-      due,
-      priority: priority.value,
-      tags: [...tags.value],
-      description: description.value,
-    })
-    emit('done')
-  } else {
-    store.addTask(title, due, priority.value, [...tags.value], description.value, null)
+  try {
+    if (props.editingTask) {
+      await store.updateTask(props.editingTask.id, {
+        title,
+        due,
+        priority: priority.value,
+        tags: [...tags.value],
+        description: description.value,
+      })
+      emit('done')
+    } else {
+      await store.addTask(title, due, priority.value, [...tags.value], description.value, null)
+    }
+  } catch (e) {
+    alert('添加失败: ' + (e.message || e))
+    return
   }
 
   resetForm()
@@ -244,6 +286,52 @@ defineExpose({ inputRef })
   stroke: currentColor;
   fill: none;
   stroke-width: 1.6;
+}
+
+.btn-ai {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.btn-ai:hover {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-ai:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-ai.loading {
+  color: var(--accent);
+  border-color: var(--accent);
+  pointer-events: none;
+}
+
+.ai-spin {
+  display: inline-block;
+  animation: ai-spin 0.8s linear infinite;
+  font-size: 18px;
+  line-height: 1;
+}
+
+@keyframes ai-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 面板包裹层——max-height 动画实现平滑下拉/收起 */

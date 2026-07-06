@@ -11,17 +11,24 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 
 _repo = LocalTaskRepo()
+_online_cache = {"value": True, "ts": 0}
 
 
 def _is_online() -> bool:
-    """检查云端是否可达（3 秒超时），离线时返回 False"""
+    """检查云端是否可达，缓存 30 秒，超时 1 秒"""
+    import time
+    now = time.time()
+    if now - _online_cache["ts"] < 30:
+        return _online_cache["value"]
     try:
         host = SUPABASE_URL.replace("https://", "").replace("http://", "").rstrip("/")
-        s = socket.create_connection((host, 443), timeout=3)
+        s = socket.create_connection((host, 443), timeout=1)
         s.close()
-        return True
+        _online_cache["value"] = True
     except Exception:
-        return False
+        _online_cache["value"] = False
+    _online_cache["ts"] = now
+    return _online_cache["value"]
 
 
 def _get_client():
@@ -49,6 +56,8 @@ def pull_tasks(user_id: str) -> int:
     supabase = _get_client()
     resp = supabase.table("tasks").select("*").eq("user_id", user_id).execute()
     rows = resp.data or []
+    if not rows:
+        return 0
     _repo.wipe_all(user_id if user_id else None)
     tasks = []
     for r in rows:
@@ -127,6 +136,8 @@ def pull_chats(user_id: str) -> int:
     supabase = _get_client()
     resp = supabase.table("chat_sessions").select("*").eq("user_id", user_id).execute()
     rows = resp.data or []
+    if not rows:
+        return 0
     conn = get_connection()
     conn.execute("DELETE FROM chat_sessions WHERE user_id = ?", (user_id,))
     for r in rows:

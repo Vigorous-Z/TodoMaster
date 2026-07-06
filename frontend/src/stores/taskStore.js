@@ -114,6 +114,9 @@ const bridgeAdapter = {
   cloudPush(userId) {
     return window.pywebview.api.api_cloud_push({ user_id: userId })
   },
+  aiParse(text) {
+    return window.pywebview.api.api_ai_parse({ text })
+  },
 }
 
 /** 就绪检测：PyWebView 注入 api 是异步的，轮询等待 */
@@ -137,6 +140,7 @@ export const useTaskStore = defineStore('task', {
     selectedTaskId: null,
     currentOwnerId: null,
     syncStatus: 'idle',  // idle | syncing | done
+    aiParsing: false,
   }),
 
   getters: {
@@ -267,6 +271,15 @@ export const useTaskStore = defineStore('task', {
     async cloudPush() {
       if (!isBridgeReady() || !this.currentOwnerId) return { count: 0 }
       return bridgeAdapter.cloudPush(this.currentOwnerId)
+    },
+    async aiParse(text) {
+      if (!isBridgeReady()) return { error: 'AI 解析仅在应用内可用' }
+      this.aiParsing = true
+      try {
+        return bridgeAdapter.aiParse(text)
+      } finally {
+        this.aiParsing = false
+      }
     },
     setView(view) {
       this.currentView = view

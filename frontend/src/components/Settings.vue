@@ -33,7 +33,7 @@
           <label>密码</label>
           <input v-model="loginPwd" type="password" placeholder="输入密码" />
           <p v-if="error" class="form-error">{{ error }}</p>
-          <button type="submit" class="btn-submit">登录</button>
+          <button type="submit" class="btn-submit" :disabled="loading">{{ loading ? '登录中…' : '登录' }}</button>
         </form>
 
         <!-- 注册表单 -->
@@ -44,7 +44,7 @@
           <input v-model="regPwd" type="password" placeholder="至少4位" />
           <p v-if="showId" class="form-hint">你的 ID 将为：{{ showId }}</p>
           <p v-if="error" class="form-error">{{ error }}</p>
-          <button type="submit" class="btn-submit">注册</button>
+          <button type="submit" class="btn-submit" :disabled="loading">{{ loading ? '注册中…' : '注册' }}</button>
         </form>
       </template>
     </div>
@@ -62,6 +62,7 @@ const taskStore = useTaskStore()
 const tab = ref('login')
 const error = ref('')
 const showId = ref('')
+const loading = ref(false)
 
 // 登录
 const loginId = ref('')
@@ -69,24 +70,17 @@ const loginPwd = ref('')
 
 async function doLogin() {
   error.value = ''
+  loading.value = true
+  await new Promise(r => setTimeout(r, 30))
   try {
     await userStore.login(loginId.value.trim(), loginPwd.value)
     loginId.value = ''
     loginPwd.value = ''
-    const uid = userStore.user?.user_id
-    // 先加载本地数据
-    await taskStore.loadTasks(uid)
-    const localCount = taskStore.tasks.length
-    // 从云端拉取——云端优先
-    const result = await taskStore.cloudPull()
-    const cloudCount = result?.count || 0
-    // 云端空但本地有数据：首次使用，把本地数据推到云端
-    if (cloudCount === 0 && localCount > 0) {
-      await taskStore.cloudPush()
-      await taskStore.loadTasks(uid)
-    }
+    await taskStore.loadTasks(userStore.user?.user_id)
   } catch (e) {
     error.value = e.message
+  } finally {
+    loading.value = false
   }
 }
 
@@ -96,16 +90,19 @@ const regPwd = ref('')
 
 async function doRegister() {
   error.value = ''
+  loading.value = true
+  await new Promise(r => setTimeout(r, 30))
   try {
     await userStore.register(regPrefix.value.trim(), regPwd.value)
     const uid = userStore.user?.user_id
-    // 新账号独立数据空间，加载空任务列表
     await taskStore.loadTasks(uid)
     regPrefix.value = ''
     regPwd.value = ''
     showId.value = ''
   } catch (e) {
     error.value = e.message
+  } finally {
+    loading.value = false
   }
 }
 
@@ -251,6 +248,7 @@ async function doLogout() {
   transition: background var(--transition);
 }
 .btn-submit:hover { background: var(--accent-hover); }
+.btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .form-error { font-size: 12px; color: var(--accent); margin: 0; }
 .form-hint { font-size: 12px; color: var(--green); margin: 0; }
