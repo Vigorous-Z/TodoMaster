@@ -1,8 +1,10 @@
-"""AI 自然语言解析服务 —— LangChain + DeepSeek"""
+"""AI 自然语言解析服务 —— LangChain + DeepSeek + MCP Sequential Thinking"""
 import json
 import os
 import re
 from datetime import datetime, timezone
+
+from backend.services.mcp_client import SequentialThinkingClient
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
@@ -37,12 +39,119 @@ def _get_llm():
 
 
 def parse(text: str) -> dict:
-    """解析自然语言 → 结构化日程，失败返回含 error 的 dict"""
+    """解析自然语言 → 结构化日程（快速模式）"""
+    if not DEEPSEEK_API_KEY:
+        return {"error": "未配置 DEEPSEEK_API_KEY"}
+    return _call_llm(text, SYSTEM_PROMPT)
+
+
+def parse_with_thinking(text: str) -> dict:
+    """基于 MCP Sequential Thinking 的多步推理解析（复杂输入模式）
+
+    MCP 架构：
+      ai_service.py ──JSON-RPC──→ mcp-sequential-thinking (MCP Server)
+                                      │
+                           5 阶段推理 (Problem Definition → Conclusion)
+
+    每阶段构建一次推理步骤，最终将结构化的推理上下文注入 LLM prompt。
+    """
     if not DEEPSEEK_API_KEY:
         return {"error": "未配置 DEEPSEEK_API_KEY"}
 
+    mcp = SequentialThinkingClient()
+
+    try:
+        mcp.start()
+
+        if not mcp._session:
+            # MCP 不可用时降级为快速模式
+            return parse(text)
+
+        now = datetime.now().strftime("%Y年%m月%d日 %H:%M")
+
+        # Stage 1 - Problem Definition
+        mcp.process_thought(
+            thought=f"解析用户输入的日程描述：「{text}」。当前时间：{now}。目标是将自然语言转换为结构化 JSON。",
+            thought_number=1, total_thoughts=5, next_thought_needed=True,
+            stage="Problem Definition",
+            tags=["自然语言处理", "日程解析"],
+        )
+
+        # Stage 2 - Research（关键词和实体识别）
+        keywords = _extract_keywords(text)
+        time_hint = _extract_time_hint(text)
+        mcp.process_thought(
+            thought=f"识别关键词: {keywords}。时间线索: {time_hint or '无显式时间'}。"
+                   f"需根据相对时间词汇（后天/下周/三天后）结合当前时间推算具体日期。",
+            thought_number=2, total_thoughts=5, next_thought_needed=True,
+            stage="Research",
+            tags=["实体识别", "时间解析"],
+        )
+
+        # Stage 3 - Analysis（映射到任务字段）
+        mcp.process_thought(
+            thought=f"将识别出的实体映射到 Task 模型字段：title、due_date、priority(high/medium/low)、"
+                   f"tags(工作/个人/学习/会议/健康/财务)、project(work/personal/learn)。"
+                   f"优先根据关键词判断 urgency 级别。",
+            thought_number=3, total_thoughts=5, next_thought_needed=True,
+            stage="Analysis",
+            tags=["字段映射", "优先级推断"],
+        )
+
+        # Stage 4 - Synthesis（构建增强 prompt + 调用 LLM）
+        enhanced_prompt = SYSTEM_PROMPT + (
+            f"\n\n前置推理结果："
+            f"\n- 关键词：{keywords}"
+            f"\n- 时间线索：{time_hint or '默认明天 23:59'}"
+            f"\n- 请基于以上推理输出精确 JSON。"
+        )
+        mcp.process_thought(
+            thought=f"合成增强 prompt 并调用 LLM 解析。Prompt 长度: {len(enhanced_prompt)} 字符。",
+            thought_number=4, total_thoughts=5, next_thought_needed=True,
+            stage="Synthesis",
+            tags=["Prompt 构建", "LLM 调用"],
+        )
+
+        result = _call_llm(text, enhanced_prompt)
+        if "error" not in result:
+            result["mode"] = "mcp-sequential-thinking"
+
+        # Stage 5 - Conclusion
+        if "error" in result:
+            mcp.process_thought(
+                thought=f"解析失败: {result['error']}。回退到快速模式结果。",
+                thought_number=5, total_thoughts=5, next_thought_needed=False,
+                stage="Conclusion",
+                tags=["失败", "降级"],
+            )
+        else:
+            mcp.process_thought(
+                thought=f"解析成功。输出: title={result.get('title')}, "
+                       f"priority={result.get('priority')}, tags={result.get('tags')}。",
+                thought_number=5, total_thoughts=5, next_thought_needed=False,
+                stage="Conclusion",
+                tags=["成功", "MCP 推理完成"],
+            )
+
+        # 生成推理摘要
+        summary = mcp.generate_summary()
+        if summary.get("success"):
+            print(f"[MCP Summary] stages completed, total thoughts logged")
+
+        return result
+
+    except Exception as e:
+        print(f"[MCP] 推理异常: {e}，降级为快速模式")
+        return parse(text)
+    finally:
+        mcp.clear_history()
+        mcp.stop()
+
+
+def _call_llm(text: str, prompt_template: str) -> dict:
+    """调用 LLM 进行解析"""
     now = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-    prompt = SYSTEM_PROMPT.format(now=now)
+    prompt = prompt_template.format(now=now)
 
     llm = _get_llm()
 
@@ -54,22 +163,37 @@ def parse(text: str) -> dict:
                 HumanMessage(content=text),
             ])
             raw = response.content.strip()
-            # 提取 JSON（去掉可能的 markdown 代码块包裹）
             match = re.search(r"\{[\s\S]*\}", raw)
             if not match:
                 raise ValueError(f"AI 未返回 JSON: {raw[:200]}")
             data = json.loads(match.group())
-            # 校验
-            validated = _validate(data)
-            return validated
+            return _validate(data)
         except Exception as e:
             if attempt < MAX_RETRIES - 1:
-                # 带错误反馈重试
-                prompt = SYSTEM_PROMPT.format(now=now) + f"\n\n上次解析错误：{e}，请修正后重新输出 JSON。"
+                prompt = prompt_template.format(now=now) + f"\n\n上次解析错误：{e}，请修正后重新输出 JSON。"
             else:
                 return {"error": f"AI 解析失败（已重试{MAX_RETRIES}次）: {e}"}
 
     return {"error": "未知错误"}
+
+
+def _extract_keywords(text: str) -> list[str]:
+    """简单关键词提取"""
+    keywords = ["工作", "个人", "学习", "会议", "健康", "财务",
+                "邮件", "报告", "跑步", "阅读", "开会", "提交",
+                "提醒", "预约", "整理", "完成", "更新", "讨论",
+                "导师", "项目", "文档", "文献"]
+    found = [w for w in keywords if w in text]
+    return found or ["任务"]
+
+
+def _extract_time_hint(text: str) -> str | None:
+    """提取时间线索"""
+    time_words = ["后天", "明天", "今天", "下周", "下个月", "三天后", "下周"]
+    for w in time_words:
+        if w in text:
+            return w
+    return None
 
 
 def _validate(data: dict) -> dict:

@@ -95,12 +95,24 @@ def api_find_user_in_cloud(data: dict) -> dict:
 
 
 # ---- AI 解析 API ----
-from backend.services.ai_service import parse as ai_parse
+from backend.services.ai_service import parse as ai_parse, parse_with_thinking
 
 
 def api_ai_parse(data: dict) -> dict:
-    """自然语言 → 结构化日程解析"""
+    """自然语言 → 结构化日程解析（快速模式）"""
     text = data.get("text", "")
     if not text.strip():
         return {"error": "输入为空"}
     return ai_parse(text.strip())
+
+
+def api_ai_parse_thinking(data: dict) -> dict:
+    """自然语言 → 结构化日程解析（MCP 多步推理模式）"""
+    text = data.get("text", "")
+    if not text.strip():
+        return {"error": "输入为空"}
+    result = parse_with_thinking(text.strip())
+    # MCP 推理结果附上使用的模式标识
+    if "error" not in result:
+        result["mode"] = "mcp-sequential-thinking"
+    return result

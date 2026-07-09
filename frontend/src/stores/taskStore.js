@@ -117,6 +117,9 @@ const bridgeAdapter = {
   aiParse(text) {
     return window.pywebview.api.api_ai_parse({ text })
   },
+  aiParseThinking(text) {
+    return window.pywebview.api.api_ai_parse_thinking({ text })
+  },
 }
 
 /** 就绪检测：PyWebView 注入 api 是异步的，轮询等待 */
@@ -276,7 +279,7 @@ export const useTaskStore = defineStore('task', {
       if (!isBridgeReady()) return { error: 'AI 解析仅在应用内可用' }
       this.aiParsing = true
       try {
-        return bridgeAdapter.aiParse(text)
+        return bridgeAdapter.aiParseThinking(text)
       } finally {
         this.aiParsing = false
       }
